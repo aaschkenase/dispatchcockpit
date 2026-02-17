@@ -7,6 +7,12 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<!-- Firebase SDK for Cloud Sync -->
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;500;600;700&family=Orbitron:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -1132,52 +1138,21 @@ td {
   border-radius: 10px;
   border: 1px solid rgba(255,184,0,0.3);
 }
-</style>
 
-<!-- Firebase SDK for Authentication & Cloud Storage -->
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-
-<script>
-// Firebase Configuration - YOUR PROJECT
-const firebaseConfig = {
-  apiKey: "AIzaSyCVhCWUXS-3I_HBfwPIaLufqgBAfMY75pc",
-  authDomain: "dispatch-command-center-951c9.firebaseapp.com",
-  projectId: "dispatch-command-center-951c9",
-  storageBucket: "dispatch-command-center-951c9.firebasestorage.app",
-  messagingSenderId: "673111932676",
-  appId: "1:673111932676:web:9d7b1171a1a9f3dd11da51"
-};
-
-// Initialize Firebase
-let app, auth, db, currentUser = null;
-try {
-  app = firebase.initializeApp(firebaseConfig);
-  auth = firebase.auth();
-  db = firebase.firestore();
-  console.log("✅ Firebase initialized successfully");
-} catch (error) {
-  console.error("Firebase initialization error:", error);
-}
-</script>
-
-<style>
-/* Auth screen styles */
+/* ========== AUTH SCREEN ========== */
 #authScreen {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 100vh;
-  background: var(--bg-primary);
+  display: none;
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
+  background: var(--bg-primary);
   z-index: 10000;
+  align-items: center;
+  justify-content: center;
 }
-#authScreen.hidden { display: none; }
+#authScreen.show { display: flex; }
 .auth-box {
   background: linear-gradient(135deg, var(--bg-elevated) 0%, var(--bg-secondary) 100%);
   border: 1px solid var(--border-medium);
@@ -1216,7 +1191,6 @@ try {
   background: linear-gradient(135deg, var(--chrome-light) 0%, var(--accent-cyan) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  background-clip: text;
   margin-bottom: 8px;
 }
 .auth-subtitle {
@@ -1246,7 +1220,6 @@ try {
   font-size: 14px;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 1px;
   cursor: pointer;
   border-radius: 8px;
   transition: all 0.3s ease;
@@ -1256,15 +1229,9 @@ try {
   color: var(--bg-primary);
   box-shadow: 0 4px 12px rgba(0,180,255,0.4);
 }
-.auth-form {
-  display: none;
-}
-.auth-form.active {
-  display: block;
-}
-.form-group {
-  margin-bottom: 20px;
-}
+.auth-form { display: none; }
+.auth-form.active { display: block; }
+.form-group { margin-bottom: 20px; }
 .form-label {
   display: block;
   font-size: 11px;
@@ -1284,7 +1251,6 @@ try {
   font-family: 'Rajdhani', sans-serif;
   font-size: 15px;
   font-weight: 600;
-  transition: all 0.3s ease;
 }
 .form-input:focus {
   outline: none;
@@ -1302,20 +1268,12 @@ try {
   font-size: 16px;
   font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 1px;
   cursor: pointer;
   box-shadow: 0 4px 16px rgba(0,180,255,0.4);
-  transition: all 0.3s ease;
   margin-top: 10px;
 }
-.auth-button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 24px rgba(0,180,255,0.6);
-}
-.auth-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
+.auth-button:hover { transform: translateY(-2px); }
+.auth-button:disabled { opacity: 0.5; cursor: not-allowed; }
 .auth-error {
   background: rgba(255,51,102,0.1);
   border: 1px solid rgba(255,51,102,0.3);
@@ -1323,13 +1281,10 @@ try {
   padding: 12px;
   border-radius: 10px;
   font-size: 13px;
-  font-weight: 600;
   margin-top: 15px;
   display: none;
 }
-.auth-error.show {
-  display: block;
-}
+.auth-error.show { display: block; }
 .demo-note {
   background: rgba(0,180,255,0.1);
   border: 1px solid rgba(0,180,255,0.3);
@@ -1337,38 +1292,16 @@ try {
   padding: 15px;
   margin-top: 20px;
   font-size: 12px;
-  line-height: 1.6;
   color: var(--text-secondary);
 }
-.demo-note strong {
-  color: var(--accent-cyan);
-  display: block;
-  margin-bottom: 8px;
-}
-#appContent {
-  display: none;
-}
-#appContent.show {
-  display: block;
-}
-.user-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 14px;
-  background: rgba(0,255,136,0.1);
-  border: 1px solid rgba(0,255,136,0.3);
-  border-radius: 10px;
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--success);
-}
+#appContent { display: none; }
+#appContent.show { display: block; }
 </style>
 </head>
 <body>
 
 <!-- Authentication Screen -->
-<div id="authScreen">
+<div id="authScreen" class="show">
   <div class="auth-box">
     <div style="text-align: center;">
       <div class="auth-shield"></div>
@@ -1381,7 +1314,6 @@ try {
       <button class="auth-tab" onclick="switchAuthTab('signup')" id="signupTab">Sign Up</button>
     </div>
 
-    <!-- Login Form -->
     <div id="loginForm" class="auth-form active">
       <div class="form-group">
         <label class="form-label">Email Address</label>
@@ -1397,7 +1329,6 @@ try {
       <div id="loginError" class="auth-error"></div>
     </div>
 
-    <!-- Signup Form -->
     <div id="signupForm" class="auth-form">
       <div class="form-group">
         <label class="form-label">Email Address</label>
@@ -1418,13 +1349,13 @@ try {
     </div>
 
     <div class="demo-note">
-      <strong>🔒 Cloud Sync Enabled</strong>
-      Your data will be securely stored in the cloud and accessible from any device. Create an account to get started!
+      <strong style="color: var(--accent-cyan); display: block; margin-bottom: 8px;">🔒 Cloud Sync Enabled</strong>
+      Your data will be securely stored in the cloud and accessible from any device.
     </div>
   </div>
 </div>
 
-<!-- App Content (hidden until logged in) -->
+<!-- App Content -->
 <div id="appContent">
 
 
@@ -2031,10 +1962,6 @@ function loadSettings(){
 
 function persistSettings(s){
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
-  // Also trigger cloud sync
-  if (currentUser && db) {
-    saveStateToCloud();
-  }
 }
 
 function migrateOrCreateState(){
@@ -2283,7 +2210,7 @@ function resetCurrentWeek(){
   
   wk.loads = [];
   wk.lastDropCoords = null;
-  await saveState();
+  saveState();
   updateUI();
   initMap();
 }
@@ -2495,7 +2422,7 @@ function updateWarnBanner(){
 /************************* 
  * LOAD CRUD 
  *************************/
-async function addLoad(){
+function addLoad(){
   const originEl = document.getElementById('origin');
   const destEl = document.getElementById('dest');
   const origin = originEl.value.trim();
@@ -2559,7 +2486,7 @@ async function addLoad(){
   else 
     wk.lastDropCoords = null;
   
-  await saveState();
+  saveState();
   updateUI();
   initMap();
   
@@ -2588,7 +2515,7 @@ function delLoad(i){
       wk.lastDropCoords = { lat:last.coords.end.lat, lon:last.coords.end.lon };
   }
   
-  await saveState();
+  saveState();
   updateUI();
   initMap();
 }
@@ -3433,6 +3360,29 @@ setTimeout(initMap, 500);
 
 
 /************************* 
+ * FIREBASE CONFIGURATION 
+ *************************/
+const firebaseConfig = {
+  apiKey: "AIzaSyCVhCWUXS-3I_HBfwPIaLufqgBAfMY75pc",
+  authDomain: "dispatch-command-center-951c9.firebaseapp.com",
+  projectId: "dispatch-command-center-951c9",
+  storageBucket: "dispatch-command-center-951c9.firebasestorage.app",
+  messagingSenderId: "673111932676",
+  appId: "1:673111932676:web:9d7b1171a1a9f3dd11da51"
+};
+
+let app, auth, db, currentUser = null;
+
+try {
+  app = firebase.initializeApp(firebaseConfig);
+  auth = firebase.auth();
+  db = firebase.firestore();
+  console.log("✅ Firebase initialized successfully");
+} catch (error) {
+  console.error("Firebase initialization error:", error);
+}
+
+/************************* 
  * AUTHENTICATION FUNCTIONS 
  *************************/
 function switchAuthTab(tab) {
@@ -3562,12 +3512,7 @@ async function initializeUserData(userId) {
 
 async function handleLogout() {
   if (confirm('Are you sure you want to logout?')) {
-    try {
-      await auth.signOut();
-    } catch (error) {
-      console.error('Logout error:', error);
-      alert('Error logging out. Please try again.');
-    }
+    await auth.signOut();
   }
 }
 
@@ -3580,48 +3525,23 @@ auth.onAuthStateChanged(async (user) => {
     currentUser = user;
     console.log("✅ User logged in:", user.email);
     
-    // Load user data from Firestore
     try {
       const doc = await db.collection('users').doc(user.uid).get();
       
       if (doc.exists) {
         const data = doc.data();
-        
-        // Load the state properly
-        state = {
-          currentDriverId: data.currentDriverId || "driver_1",
-          drivers: data.drivers || {}
-        };
-        
+        state.currentDriverId = data.currentDriverId || state.currentDriverId;
+        state.drivers = data.drivers || state.drivers;
         settings = data.settings || settings;
-        
         console.log("✅ Data loaded from cloud");
-        console.log("📊 Drivers loaded:", Object.keys(state.drivers).length);
       } else {
-        console.log("No cloud data found, initializing new account...");
+        console.log("Initializing new user data...");
         await initializeUserData(user.uid);
-        
-        // Load the newly created data
-        const newDoc = await db.collection('users').doc(user.uid).get();
-        if (newDoc.exists) {
-          const data = newDoc.data();
-          state = {
-            currentDriverId: data.currentDriverId || "driver_1",
-            drivers: data.drivers || {}
-          };
-          settings = data.settings || settings;
-        }
       }
       
-      // Update UI with user email
-      const emailEl = document.getElementById('userEmail');
-      if (emailEl) emailEl.textContent = user.email;
-      
-      // Hide auth, show app
-      authScreen.classList.add('hidden');
+      authScreen.classList.remove('show');
       appContent.classList.add('show');
       
-      // Initialize app
       ensureCurrentDriverHasThisWeek();
       bindSettingsToInputs();
       wireEntryKeyNav();
@@ -3633,55 +3553,32 @@ auth.onAuthStateChanged(async (user) => {
       
     } catch (error) {
       console.error('Error loading data:', error);
-      alert('Error loading your data. Please try refreshing.');
+      alert('Error loading data. Please refresh the page.');
     }
   } else {
     currentUser = null;
-    authScreen.classList.remove('hidden');
+    authScreen.classList.add('show');
     appContent.classList.remove('show');
   }
 });
 
-// Override saveState to sync with Firestore
-async function saveStateToCloud() {
-  if (currentUser && db) {
-    try {
-      const dataToSave = {
-        currentDriverId: state.currentDriverId,
-        drivers: state.drivers,
-        settings: settings,
-        lastModified: new Date().toISOString()
-      };
-      
-      await db.collection('users').doc(currentUser.uid).set(dataToSave);
-      console.log("☁️ Data synced to cloud at", new Date().toLocaleTimeString());
-      
-      // Update sync status indicator
-      const syncStatus = document.getElementById('syncStatus');
-      if (syncStatus) {
-        syncStatus.textContent = '✅ Synced';
-        syncStatus.style.color = 'var(--success)';
-      }
-    } catch (error) {
-      console.error("❌ Cloud sync error:", error);
-      const syncStatus = document.getElementById('syncStatus');
-      if (syncStatus) {
-        syncStatus.textContent = '⚠️ Sync Failed';
-        syncStatus.style.color = 'var(--danger)';
-      }
-    }
-  }
-}
-
-// Override the original saveState function
-const _originalSaveState = saveState;
-saveState = async function() {
-  // Always save locally first (instant backup)
-  localStorage.setItem(STORE_KEY, JSON.stringify(state));
-  localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+// Override saveState to sync with cloud
+const _origSaveState = saveState;
+saveState = function() {
+  _origSaveState();
   
-  // Then sync to cloud
-  await saveStateToCloud();
+  if (currentUser && db) {
+    db.collection('users').doc(currentUser.uid).set({
+      currentDriverId: state.currentDriverId,
+      drivers: state.drivers,
+      settings: settings,
+      lastModified: new Date().toISOString()
+    }).then(() => {
+      console.log("☁️ Synced to cloud");
+    }).catch((error) => {
+      console.error("Sync error:", error);
+    });
+  }
 };
 
 
