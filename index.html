@@ -3,16 +3,10 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=0" />
-<title>Dispatch Command Center - Cloud Edition</title>
+<title>Dispatch Command Center</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-
-<!-- Firebase SDK for Cloud Sync -->
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;500;600;700&family=Orbitron:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -1139,8 +1133,301 @@ td {
   border: 1px solid rgba(255,184,0,0.3);
 }
 </style>
+
+<!-- Firebase SDK for Authentication & Cloud Storage -->
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+<script>
+// Firebase Configuration - YOUR PROJECT
+const firebaseConfig = {
+  apiKey: "AIzaSyCVhCWUXS-3I_HBfwPIaLufqgBAfMY75pc",
+  authDomain: "dispatch-command-center-951c9.firebaseapp.com",
+  projectId: "dispatch-command-center-951c9",
+  storageBucket: "dispatch-command-center-951c9.firebasestorage.app",
+  messagingSenderId: "673111932676",
+  appId: "1:673111932676:web:9d7b1171a1a9f3dd11da51"
+};
+
+// Initialize Firebase
+let app, auth, db, currentUser = null;
+try {
+  app = firebase.initializeApp(firebaseConfig);
+  auth = firebase.auth();
+  db = firebase.firestore();
+  console.log("✅ Firebase initialized successfully");
+} catch (error) {
+  console.error("Firebase initialization error:", error);
+}
+</script>
+
+<style>
+/* Auth screen styles */
+#authScreen {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background: var(--bg-primary);
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10000;
+}
+#authScreen.hidden { display: none; }
+.auth-box {
+  background: linear-gradient(135deg, var(--bg-elevated) 0%, var(--bg-secondary) 100%);
+  border: 1px solid var(--border-medium);
+  border-radius: 20px;
+  padding: 50px 40px;
+  max-width: 450px;
+  width: 90%;
+  box-shadow: var(--shadow-lg), 0 0 60px rgba(0,180,255,0.2);
+}
+.auth-shield {
+  width: 80px;
+  height: 80px;
+  background: linear-gradient(135deg, var(--chrome-light) 0%, var(--chrome-dark) 100%);
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+  margin: 0 auto 20px;
+  position: relative;
+  box-shadow: 0 8px 24px rgba(0,180,255,0.4);
+}
+.auth-shield::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 70%;
+  height: 70%;
+  background: var(--bg-elevated);
+  clip-path: polygon(50% 5%, 95% 27%, 95% 73%, 50% 95%, 5% 73%, 5% 27%);
+}
+.auth-title {
+  text-align: center;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 32px;
+  font-weight: 900;
+  letter-spacing: 2px;
+  background: linear-gradient(135deg, var(--chrome-light) 0%, var(--accent-cyan) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 8px;
+}
+.auth-subtitle {
+  text-align: center;
+  font-size: 13px;
+  letter-spacing: 2px;
+  color: var(--text-muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  margin-bottom: 40px;
+}
+.auth-tabs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 30px;
+  background: var(--bg-primary);
+  padding: 6px;
+  border-radius: 12px;
+}
+.auth-tab {
+  flex: 1;
+  padding: 12px;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+.auth-tab.active {
+  background: linear-gradient(135deg, var(--accent-blue) 0%, var(--accent-cyan) 100%);
+  color: var(--bg-primary);
+  box-shadow: 0 4px 12px rgba(0,180,255,0.4);
+}
+.auth-form {
+  display: none;
+}
+.auth-form.active {
+  display: block;
+}
+.form-group {
+  margin-bottom: 20px;
+}
+.form-label {
+  display: block;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--text-muted);
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+.form-input {
+  width: 100%;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-medium);
+  color: var(--text-primary);
+  padding: 14px 16px;
+  border-radius: 10px;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+.form-input:focus {
+  outline: none;
+  border-color: var(--accent-cyan);
+  box-shadow: 0 0 15px var(--glow-cyan);
+}
+.auth-button {
+  width: 100%;
+  padding: 16px;
+  background: linear-gradient(135deg, var(--accent-blue) 0%, var(--accent-cyan) 100%);
+  border: none;
+  border-radius: 12px;
+  color: var(--bg-primary);
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 16px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(0,180,255,0.4);
+  transition: all 0.3s ease;
+  margin-top: 10px;
+}
+.auth-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 24px rgba(0,180,255,0.6);
+}
+.auth-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.auth-error {
+  background: rgba(255,51,102,0.1);
+  border: 1px solid rgba(255,51,102,0.3);
+  color: var(--danger);
+  padding: 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  margin-top: 15px;
+  display: none;
+}
+.auth-error.show {
+  display: block;
+}
+.demo-note {
+  background: rgba(0,180,255,0.1);
+  border: 1px solid rgba(0,180,255,0.3);
+  border-radius: 10px;
+  padding: 15px;
+  margin-top: 20px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+.demo-note strong {
+  color: var(--accent-cyan);
+  display: block;
+  margin-bottom: 8px;
+}
+#appContent {
+  display: none;
+}
+#appContent.show {
+  display: block;
+}
+.user-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: rgba(0,255,136,0.1);
+  border: 1px solid rgba(0,255,136,0.3);
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--success);
+}
+</style>
 </head>
 <body>
+
+<!-- Authentication Screen -->
+<div id="authScreen">
+  <div class="auth-box">
+    <div style="text-align: center;">
+      <div class="auth-shield"></div>
+      <div class="auth-title">DISPATCH</div>
+      <div class="auth-subtitle">Command Center</div>
+    </div>
+
+    <div class="auth-tabs">
+      <button class="auth-tab active" onclick="switchAuthTab('login')" id="loginTab">Login</button>
+      <button class="auth-tab" onclick="switchAuthTab('signup')" id="signupTab">Sign Up</button>
+    </div>
+
+    <!-- Login Form -->
+    <div id="loginForm" class="auth-form active">
+      <div class="form-group">
+        <label class="form-label">Email Address</label>
+        <input type="email" class="form-input" id="loginEmail" placeholder="driver@dispatch.com" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input type="password" class="form-input" id="loginPassword" placeholder="••••••••" required>
+      </div>
+      <button class="auth-button" onclick="handleLogin()" id="loginBtn">
+        Login to Command Center
+      </button>
+      <div id="loginError" class="auth-error"></div>
+    </div>
+
+    <!-- Signup Form -->
+    <div id="signupForm" class="auth-form">
+      <div class="form-group">
+        <label class="form-label">Email Address</label>
+        <input type="email" class="form-input" id="signupEmail" placeholder="driver@dispatch.com" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input type="password" class="form-input" id="signupPassword" placeholder="••••••••" minlength="6" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Confirm Password</label>
+        <input type="password" class="form-input" id="signupPasswordConfirm" placeholder="••••••••" minlength="6" required>
+      </div>
+      <button class="auth-button" onclick="handleSignup()" id="signupBtn">
+        Create Account
+      </button>
+      <div id="signupError" class="auth-error"></div>
+    </div>
+
+    <div class="demo-note">
+      <strong>🔒 Cloud Sync Enabled</strong>
+      Your data will be securely stored in the cloud and accessible from any device. Create an account to get started!
+    </div>
+  </div>
+</div>
+
+<!-- App Content (hidden until logged in) -->
+<div id="appContent">
+
+
 
 <div id="overlay" onclick="closeModal()"></div>
 <div id="modal" role="dialog" aria-modal="true" aria-label="Trip Financials">
@@ -1189,8 +1476,8 @@ td {
         <span>🧹</span> Clear Week
       </button>
       
-      <div class="status-pill no-print" id="cloudStatus">
-        <span>Cloud Storage Active</span>
+      <div class="status-pill no-print">
+        <span>Local Storage</span>
       </div>
     </div>
     
@@ -1689,32 +1976,6 @@ td {
 /************************* 
  * STORAGE 
  *************************/
-
-/************************* 
- * FIREBASE CLOUD SYNC - YOUR CONFIG
- *************************/
-const firebaseConfig = {
-  apiKey: "AIzaSyCVhCWUXS-3I_HBfwPIaLufqgBAfMY75pc",
-  authDomain: "dispatch-command-center-951c9.firebaseapp.com",
-  projectId: "dispatch-command-center-951c9",
-  storageBucket: "dispatch-command-center-951c9.firebasestorage.app",
-  messagingSenderId: "673111932676",
-  appId: "1:673111932676:web:9d7b1171a1a9f3dd11da51"
-};
-
-let app, auth, db, currentUser = null;
-try {
-  app = firebase.initializeApp(firebaseConfig);
-  auth = firebase.auth();
-  db = firebase.firestore();
-  console.log("✅ Firebase Cloud Sync: ENABLED");
-  console.log("📊 Project:", firebaseConfig.projectId);
-} catch (error) {
-  console.error("⚠️ Firebase initialization error:", error);
-  console.log("ℹ️ App will continue with local storage only");
-}
-
-
 const STORE_KEY = "tagdriverpro_v3_state";
 const SETTINGS_KEY = "tagdriverpro_v3_settings";
 const GEO_CACHE_KEY = "tagdriverpro_v3_geo_cache";
@@ -1809,23 +2070,8 @@ let settings = loadSettings();
 /************************* 
  * BASIC HELPERS 
  *************************/
-async function saveState(){
-  // Always save locally first
+function saveState(){
   localStorage.setItem(STORE_KEY, JSON.stringify(state));
-  
-  // Sync to Firebase Cloud if user is logged in
-  if (currentUser && db) {
-    try {
-      await db.collection('users').doc(currentUser.uid).set({
-        state: state,
-        settings: settings,
-        lastModified: new Date().toISOString()
-      }, { merge: true });
-      console.log("☁️ Synced to cloud");
-    } catch (error) {
-      console.error("⚠️ Cloud sync error:", error);
-    }
-  }
 }
 
 function money(v){
@@ -3180,6 +3426,222 @@ renderWeekSelect();
 bindDriverOverridesToInputs();
 updateUI();
 setTimeout(initMap, 500);
+
+
+/************************* 
+ * AUTHENTICATION FUNCTIONS 
+ *************************/
+function switchAuthTab(tab) {
+  const loginTab = document.getElementById('loginTab');
+  const signupTab = document.getElementById('signupTab');
+  const loginForm = document.getElementById('loginForm');
+  const signupForm = document.getElementById('signupForm');
+  
+  if (tab === 'login') {
+    loginTab.classList.add('active');
+    signupTab.classList.remove('active');
+    loginForm.classList.add('active');
+    signupForm.classList.remove('active');
+  } else {
+    signupTab.classList.add('active');
+    loginTab.classList.remove('active');
+    signupForm.classList.add('active');
+    loginForm.classList.remove('active');
+  }
+}
+
+async function handleLogin() {
+  const email = document.getElementById('loginEmail').value;
+  const password = document.getElementById('loginPassword').value;
+  const btn = document.getElementById('loginBtn');
+  const errorEl = document.getElementById('loginError');
+  
+  btn.disabled = true;
+  btn.textContent = 'Logging in...';
+  errorEl.classList.remove('show');
+  
+  try {
+    await auth.signInWithEmailAndPassword(email, password);
+  } catch (error) {
+    console.error('Login error:', error);
+    errorEl.textContent = getFirebaseErrorMessage(error.code);
+    errorEl.classList.add('show');
+    btn.disabled = false;
+    btn.textContent = 'Login to Command Center';
+  }
+}
+
+async function handleSignup() {
+  const email = document.getElementById('signupEmail').value;
+  const password = document.getElementById('signupPassword').value;
+  const confirmPassword = document.getElementById('signupPasswordConfirm').value;
+  const btn = document.getElementById('signupBtn');
+  const errorEl = document.getElementById('signupError');
+  
+  errorEl.classList.remove('show');
+  
+  if (password !== confirmPassword) {
+    errorEl.textContent = 'Passwords do not match';
+    errorEl.classList.add('show');
+    return;
+  }
+  
+  btn.disabled = true;
+  btn.textContent = 'Creating Account...';
+  
+  try {
+    const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+    await initializeUserData(userCredential.user.uid);
+  } catch (error) {
+    console.error('Signup error:', error);
+    errorEl.textContent = getFirebaseErrorMessage(error.code);
+    errorEl.classList.add('show');
+    btn.disabled = false;
+    btn.textContent = 'Create Account';
+  }
+}
+
+function getFirebaseErrorMessage(code) {
+  const messages = {
+    'auth/email-already-in-use': 'This email is already registered',
+    'auth/invalid-email': 'Invalid email address',
+    'auth/weak-password': 'Password should be at least 6 characters',
+    'auth/user-not-found': 'No account found with this email',
+    'auth/wrong-password': 'Incorrect password',
+    'auth/too-many-requests': 'Too many attempts. Please try again later',
+    'auth/network-request-failed': 'Network error. Check your connection'
+  };
+  return messages[code] || 'An error occurred. Please try again.';
+}
+
+async function initializeUserData(userId) {
+  const wk = startOfWeekMonday(new Date());
+  const baseId = isoDate(wk);
+  
+  const initialData = {
+    currentDriverId: "driver_1",
+    drivers: {
+      "driver_1": {
+        name: "Driver 1",
+        splitOverride: null,
+        currentWeekId: baseId,
+        weeks: {
+          [baseId]: {
+            start: baseId,
+            label: fmtWeekLabel(wk),
+            loads: [],
+            lastDropCoords: null
+          }
+        }
+      }
+    },
+    settings: {
+      f_truck: 800,
+      f_trailer: 400,
+      f_ins: 350,
+      f_adv: 0,
+      f_food: 0,
+      f_rep: 0,
+      s_split: 0.80,
+      s_fuel: 3.25,
+      s_mpg: 6.5,
+      s_maint: 0.17,
+      s_loads_per_week: 5,
+      s_target_net: 1500,
+      s_tax: 0.25
+    }
+  };
+  
+  await db.collection('users').doc(userId).set(initialData);
+  console.log("✅ User data initialized");
+}
+
+async function handleLogout() {
+  if (confirm('Are you sure you want to logout?')) {
+    try {
+      await auth.signOut();
+    } catch (error) {
+      console.error('Logout error:', error);
+      alert('Error logging out. Please try again.');
+    }
+  }
+}
+
+// Auth state observer
+auth.onAuthStateChanged(async (user) => {
+  const authScreen = document.getElementById('authScreen');
+  const appContent = document.getElementById('appContent');
+  
+  if (user) {
+    currentUser = user;
+    console.log("✅ User logged in:", user.email);
+    
+    // Load user data from Firestore
+    try {
+      const doc = await db.collection('users').doc(user.uid).get();
+      
+      if (doc.exists) {
+        const data = doc.data();
+        state = data;
+        settings = data.settings || settings;
+        console.log("✅ Data loaded from cloud");
+      } else {
+        console.log("No cloud data, initializing...");
+        await initializeUserData(user.uid);
+      }
+      
+      // Update UI with user email
+      const emailEl = document.getElementById('userEmail');
+      if (emailEl) emailEl.textContent = user.email;
+      
+      // Hide auth, show app
+      authScreen.classList.add('hidden');
+      appContent.classList.add('show');
+      
+      // Initialize app
+      ensureCurrentDriverHasThisWeek();
+      bindSettingsToInputs();
+      wireEntryKeyNav();
+      renderDriverSelect();
+      renderWeekSelect();
+      bindDriverOverridesToInputs();
+      updateUI();
+      setTimeout(initMap, 500);
+      
+    } catch (error) {
+      console.error('Error loading data:', error);
+      alert('Error loading your data. Please try refreshing.');
+    }
+  } else {
+    currentUser = null;
+    authScreen.classList.remove('hidden');
+    appContent.classList.remove('show');
+  }
+});
+
+// Override saveState to sync with Firestore
+const originalSaveState = saveState;
+saveState = async function() {
+  // Save locally first
+  localStorage.setItem(STORE_KEY, JSON.stringify(state));
+  
+  // Sync to Firestore if logged in
+  if (currentUser && db) {
+    try {
+      await db.collection('users').doc(currentUser.uid).set({
+        ...state,
+        settings: settings,
+        lastModified: new Date().toISOString()
+      }, { merge: true });
+      console.log("☁️ Synced to cloud");
+    } catch (error) {
+      console.error("Cloud sync error:", error);
+    }
+  }
+};
+
+
 </script>
+</div>
 </body>
 </html>
