@@ -2031,6 +2031,10 @@ function loadSettings(){
 
 function persistSettings(s){
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
+  // Also trigger cloud sync
+  if (currentUser && db) {
+    saveStateToCloud();
+  }
 }
 
 function migrateOrCreateState(){
@@ -2279,7 +2283,7 @@ function resetCurrentWeek(){
   
   wk.loads = [];
   wk.lastDropCoords = null;
-  saveState();
+  await saveState();
   updateUI();
   initMap();
 }
@@ -2491,7 +2495,7 @@ function updateWarnBanner(){
 /************************* 
  * LOAD CRUD 
  *************************/
-function addLoad(){
+async function addLoad(){
   const originEl = document.getElementById('origin');
   const destEl = document.getElementById('dest');
   const origin = originEl.value.trim();
@@ -2555,7 +2559,7 @@ function addLoad(){
   else 
     wk.lastDropCoords = null;
   
-  saveState();
+  await saveState();
   updateUI();
   initMap();
   
@@ -2584,7 +2588,7 @@ function delLoad(i){
       wk.lastDropCoords = { lat:last.coords.end.lat, lon:last.coords.end.lon };
   }
   
-  saveState();
+  await saveState();
   updateUI();
   initMap();
 }
@@ -3582,12 +3586,31 @@ auth.onAuthStateChanged(async (user) => {
       
       if (doc.exists) {
         const data = doc.data();
-        state = data;
+        
+        // Load the state properly
+        state = {
+          currentDriverId: data.currentDriverId || "driver_1",
+          drivers: data.drivers || {}
+        };
+        
         settings = data.settings || settings;
+        
         console.log("✅ Data loaded from cloud");
+        console.log("📊 Drivers loaded:", Object.keys(state.drivers).length);
       } else {
-        console.log("No cloud data, initializing...");
+        console.log("No cloud data found, initializing new account...");
         await initializeUserData(user.uid);
+        
+        // Load the newly created data
+        const newDoc = await db.collection('users').doc(user.uid).get();
+        if (newDoc.exists) {
+          const data = newDoc.data();
+          state = {
+            currentDriverId: data.currentDriverId || "driver_1",
+            drivers: data.drivers || {}
+          };
+          settings = data.settings || settings;
+        }
       }
       
       // Update UI with user email
@@ -3620,24 +3643,45 @@ auth.onAuthStateChanged(async (user) => {
 });
 
 // Override saveState to sync with Firestore
-const originalSaveState = saveState;
-saveState = async function() {
-  // Save locally first
-  localStorage.setItem(STORE_KEY, JSON.stringify(state));
-  
-  // Sync to Firestore if logged in
+async function saveStateToCloud() {
   if (currentUser && db) {
     try {
-      await db.collection('users').doc(currentUser.uid).set({
-        ...state,
+      const dataToSave = {
+        currentDriverId: state.currentDriverId,
+        drivers: state.drivers,
         settings: settings,
         lastModified: new Date().toISOString()
-      }, { merge: true });
-      console.log("☁️ Synced to cloud");
+      };
+      
+      await db.collection('users').doc(currentUser.uid).set(dataToSave);
+      console.log("☁️ Data synced to cloud at", new Date().toLocaleTimeString());
+      
+      // Update sync status indicator
+      const syncStatus = document.getElementById('syncStatus');
+      if (syncStatus) {
+        syncStatus.textContent = '✅ Synced';
+        syncStatus.style.color = 'var(--success)';
+      }
     } catch (error) {
-      console.error("Cloud sync error:", error);
+      console.error("❌ Cloud sync error:", error);
+      const syncStatus = document.getElementById('syncStatus');
+      if (syncStatus) {
+        syncStatus.textContent = '⚠️ Sync Failed';
+        syncStatus.style.color = 'var(--danger)';
+      }
     }
   }
+}
+
+// Override the original saveState function
+const _originalSaveState = saveState;
+saveState = async function() {
+  // Always save locally first (instant backup)
+  localStorage.setItem(STORE_KEY, JSON.stringify(state));
+  localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+  
+  // Then sync to cloud
+  await saveStateToCloud();
 };
 
 
