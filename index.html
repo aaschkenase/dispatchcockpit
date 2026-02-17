@@ -1,463 +1,524 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=0" />
-  <title>Tag Driver Pro</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=0" />
+    <title>Tag Driver Pro | Command Center</title>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-  <!-- Favicon (put a file at assets/favicon.png or update path) -->
-  <link rel="icon" type="image/png" href="assets/favicon.png">
+    <style>
+        /* TAG TRANS BRAND THEME */
+        :root { 
+            --bg: #051111;              /* Very Dark Teal */
+            --card: rgba(22, 46, 44, 0.6); /* Glassy Teal */
+            --border: rgba(182, 193, 105, 0.15); /* Subtle Gold Border */
+            
+            --accent: #B6C169;          /* TAG GOLD */
+            --accent-glow: rgba(182, 193, 105, 0.4);
+            --primary: #1A4C48;         /* TAG TEAL */
+            
+            --text: #F3F6F6;
+            --muted: #8da3a1;
+            
+            --success: #4ade80; 
+            --danger: #fb7185; 
+            --warning: #fbbf24;
+            
+            --radius: 16px;
+        }
 
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+        * { box-sizing: border-box; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }
+        body { margin: 0; background: var(--bg); color: var(--text); padding-bottom: 80px; background-image: radial-gradient(circle at 10% 20%, rgba(26, 76, 72, 0.2) 0%, transparent 20%); }
+        .container { max-width: 1400px; margin: 0 auto; padding: 15px; }
 
-  <style>
-    /* TAG TRANS BRAND THEME */
-    :root{
-      /* Brand picks (pulled from your logo palette) */
-      --tag-teal: #1A4C48;      /* deep teal */
-      --tag-teal-2: #0F3532;    /* darker teal */
-      --tag-gold: #B6C169;      /* logo gold/olive */
-      --tag-gold-2: #D2D98A;    /* lighter gold highlight */
+        /* HEADER */
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; padding: 15px; background: rgba(255,255,255,0.03); border-radius: var(--radius); border: 1px solid var(--border); backdrop-filter: blur(10px); }
+        .brand { font-size: 20px; font-weight: 900; letter-spacing: -0.5px; color: #fff; }
+        .brand span { color: var(--accent); }
+        #status { font-size: 12px; font-weight: 700; color: var(--accent); display: none; text-transform: uppercase; letter-spacing: 1px; }
 
-      /* UI system */
-      --bg: #071716;
-      --bg-2: #0A211F;
-      --card: rgba(255,255,255,0.06);
-      --card-2: rgba(255,255,255,0.08);
-      --border: rgba(182,193,105,0.22);
+        /* NAVIGATION */
+        nav { display: flex; gap: 10px; margin-bottom: 25px; padding-bottom: 5px; overflow-x: auto; }
+        .nav-btn { 
+            padding: 10px 20px; background: transparent; border: 1px solid transparent; 
+            color: var(--muted); font-weight: 700; cursor: pointer; border-radius: 50px; 
+            transition: 0.3s; white-space: nowrap; font-size: 13px;
+        }
+        .nav-btn:hover { color: var(--text); background: rgba(255,255,255,0.05); }
+        .nav-btn.active { 
+            background: var(--primary); color: white; border: 1px solid var(--accent); 
+            box-shadow: 0 0 15px rgba(182, 193, 105, 0.2); 
+        }
+        .tab-content { display: none; animation: fadeIn 0.4s ease; }
+        .tab-content.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 
-      --accent: var(--tag-gold);
-      --accent-2: var(--tag-teal);
-      --text: #F3F6F6;
-      --muted: rgba(243,246,246,0.68);
+        /* DASHBOARD GRID */
+        .dash-grid { display: grid; grid-template-columns: 380px 1fr; gap: 20px; }
+        @media (max-width: 1000px) { .dash-grid { grid-template-columns: 1fr; } }
 
-      --success: #22c55e;
-      --danger: #ef4444;
-      --warning: #f59e0b;
+        /* CARDS */
+        .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 20px; backdrop-filter: blur(12px); overflow: hidden; }
+        .card-header { padding: 15px 20px; border-bottom: 1px solid var(--border); font-weight: 800; font-size: 11px; color: var(--accent); text-transform: uppercase; letter-spacing: 1.5px; background: rgba(0,0,0,0.2); }
+        .card-body { padding: 20px; }
 
-      --shadow: 0 18px 60px rgba(0,0,0,.45);
-      --radius: 16px;
-    }
+        /* STATS BAR */
+        .stats-bar { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 15px; margin-bottom: 25px; }
+        .stat-box { background: var(--card); border: 1px solid var(--border); padding: 15px; border-radius: var(--radius); position: relative; }
+        .stat-box::before { content: ''; position: absolute; top: 15px; bottom: 15px; left: 0; width: 3px; background: var(--accent); border-radius: 0 4px 4px 0; }
+        .stat-label { font-size: 10px; color: var(--muted); text-transform: uppercase; font-weight: 700; margin-bottom: 5px; margin-left: 10px; }
+        .stat-val { font-size: 22px; font-weight: 800; margin-left: 10px; color: var(--text); }
 
-    *{box-sizing:border-box;font-family:'Segoe UI',system-ui,sans-serif}
-    body{
-      margin:0;
-      color:var(--text);
-      background:
-        radial-gradient(1000px 600px at 15% -10%, rgba(182,193,105,0.18), transparent 55%),
-        radial-gradient(900px 650px at 115% 20%, rgba(26,76,72,0.35), transparent 55%),
-        linear-gradient(180deg, var(--bg), var(--bg-2));
-      padding-bottom:50px;
-    }
+        /* INPUTS */
+        .input-row { display: flex; gap: 12px; margin-bottom: 15px; }
+        .input-group { flex: 1; }
+        label { display: block; font-size: 11px; color: var(--muted); margin-bottom: 6px; font-weight: 700; text-transform: uppercase; }
+        input { 
+            width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--border); color: white; 
+            padding: 12px; border-radius: 10px; font-weight: 600; font-size: 14px; transition: 0.3s;
+        }
+        input:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 2px var(--accent-glow); }
 
-    .container{max-width:1400px;margin:0 auto;padding:16px}
+        /* BUTTONS */
+        .btn { width: 100%; padding: 14px; border: none; border-radius: 10px; font-weight: 800; cursor: pointer; font-size: 13px; transition: 0.2s; text-transform: uppercase; letter-spacing: 0.5px; }
+        .btn-primary { background: linear-gradient(135deg, var(--accent), #9ca85b); color: #051111; }
+        .btn-primary:hover { filter: brightness(1.1); transform: translateY(-1px); }
+        .btn-tool { background: rgba(255,255,255,0.05); color: var(--accent); border: 1px solid var(--border); margin-top: 5px; padding: 10px; font-size: 11px; }
+        .btn-tool:hover { background: var(--primary); border-color: var(--accent); color: white; }
 
-    /* Header */
-    .topbar{
-      display:flex;justify-content:space-between;align-items:center;gap:14px;
-      margin-bottom:14px;flex-wrap:wrap;
-      padding:14px 14px;
-      border:1px solid var(--border);
-      background: rgba(255,255,255,0.04);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      backdrop-filter: blur(8px);
-    }
-    .brandWrap{display:flex;align-items:center;gap:12px}
-    .logo{
-      width:46px;height:46px;border-radius:14px;
-      border:1px solid rgba(182,193,105,0.35);
-      background: rgba(255,255,255,0.07);
-      padding:6px;
-      display:flex;align-items:center;justify-content:center;
-    }
-    .logo img{width:100%;height:100%;object-fit:contain;display:block}
-    .brandText{display:flex;flex-direction:column;line-height:1.05}
-    .brandTitle{
-      font-size:20px;font-weight:1000;letter-spacing:-0.7px;
-    }
-    .brandTitle span{color:var(--accent)}
-    .brandSub{font-size:11px;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:1px}
+        /* MAP */
+        #map { height: 500px; width: 100%; border-radius: 12px; border: 1px solid var(--border); z-index: 0; }
 
-    .pill{
-      display:inline-flex;gap:8px;align-items:center;
-      padding:9px 12px;border-radius:999px;
-      background: rgba(26,76,72,0.25);
-      border:1px solid rgba(26,76,72,0.35);
-      color: var(--text);
-      font-size:12px;font-weight:900;
-    }
+        /* TABLE */
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        th { text-align: left; color: var(--muted); padding: 12px; border-bottom: 1px solid var(--border); font-size: 10px; text-transform: uppercase; letter-spacing: 1px; }
+        td { padding: 12px; border-bottom: 1px solid var(--border); font-weight: 500; }
+        .action-btn { background: transparent; border: 1px solid var(--border); color: var(--accent); cursor: pointer; padding: 6px 12px; border-radius: 6px; font-size: 10px; font-weight: 700; text-transform: uppercase; }
+        .action-btn:hover { background: var(--accent); color: #000; }
+        .delete-btn { color: var(--danger); border-color: var(--danger); }
+        .delete-btn:hover { background: var(--danger); color: white; }
 
-    /* Controls */
-    .controls{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
-    .control-block{display:flex;flex-direction:column;gap:6px}
-    .mini{font-size:11px;color:var(--muted);font-weight:900}
-    select,input{
-      width:100%;
-      background: rgba(0,0,0,0.25);
-      border: 1px solid rgba(182,193,105,0.25);
-      color:#fff;
-      padding:10px 12px;border-radius:14px;
-      font-weight:900;
-      outline:none;
-      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.03);
-    }
-    select:focus,input:focus{border-color: rgba(182,193,105,0.55); box-shadow: 0 0 0 4px rgba(182,193,105,0.18)}
+        /* MODAL */
+        #modal { display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background: #071716; border: 1px solid var(--accent); padding:25px; border-radius:20px; z-index:1000; width:90%; max-width:420px; box-shadow: 0 20px 60px rgba(0,0,0,0.9); }
+        #overlay { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:999; backdrop-filter: blur(4px); }
+        .breakdown-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
 
-    .btnSmall{
-      border:1px solid rgba(182,193,105,0.25);
-      background: rgba(255,255,255,0.04);
-      color:var(--text);
-      padding:10px 12px;border-radius:14px;
-      cursor:pointer;font-weight:1000;
-      transition:.15s;
-    }
-    .btnSmall:hover{border-color: rgba(182,193,105,0.55); transform: translateY(-1px)}
-    .btnSmall.primary{
-      background: linear-gradient(135deg, rgba(182,193,105,0.95), rgba(210,217,138,0.85));
-      border-color: rgba(182,193,105,0.9);
-      color:#071716;
-    }
-    .btnSmall.primary:hover{filter:brightness(1.03)}
-    .btnSmall.danger{border-color: rgba(239,68,68,0.55); color:#fecaca}
-    .btnSmall.danger:hover{background: rgba(239,68,68,0.22); border-color: rgba(239,68,68,0.8)}
+        .pos { color: var(--success); } .neg { color: var(--danger); }
+        .verified { color: var(--success); font-size: 10px; font-weight: 700; margin-top: 5px; display: none; text-transform: uppercase; }
 
-    /* Status/warn */
-    .status-msg{
-      font-size:12px;color: #1a4c48;
-      display:none;font-weight:1000;
-      background: rgba(182,193,105,0.85);
-      padding:10px 12px;border-radius:14px;
-      border:1px solid rgba(182,193,105,0.9);
-    }
-    .warn-banner{
-      display:none;margin:14px 0;padding:12px 14px;border-radius:16px;
-      border:1px solid rgba(239,68,68,0.35);background:rgba(239,68,68,0.12);
-      font-weight:1000;color:#fecaca
-    }
-    .warn-banner b{color:#fff}
-
-    /* Nav */
-    nav{
-      display:flex;gap:10px;margin:14px 0;
-      border:1px solid rgba(182,193,105,0.20);
-      background: rgba(255,255,255,0.04);
-      padding:10px;border-radius: var(--radius);
-      overflow-x:auto;
-    }
-    .nav-btn{
-      padding:10px 16px;border:none;cursor:pointer;
-      color:var(--muted);font-weight:1000;border-radius:14px;
-      background: transparent; transition:.15s; white-space:nowrap;
-    }
-    .nav-btn:hover{background: rgba(182,193,105,0.10); color: var(--text)}
-    .nav-btn.active{
-      background: linear-gradient(135deg, rgba(26,76,72,0.75), rgba(15,53,50,0.65));
-      color: #EAF2F2;
-      border: 1px solid rgba(26,76,72,0.55);
-      box-shadow: 0 10px 26px rgba(0,0,0,.25);
-    }
-    .tab-content{display:none}
-    .tab-content.active{display:block}
-
-    /* Layout */
-    .dash-grid{display:grid;grid-template-columns:420px 1fr;gap:20px}
-    @media (max-width:1050px){.dash-grid{grid-template-columns:1fr}}
-
-    /* Cards */
-    .card{
-      border:1px solid var(--border);
-      background: var(--card);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      overflow:hidden;
-      backdrop-filter: blur(8px);
-      margin-bottom:20px;
-    }
-    .card-header{
-      background: rgba(26,76,72,0.22);
-      border-bottom: 1px solid rgba(182,193,105,0.18);
-      padding:12px 15px;
-      font-weight:1100;font-size:12px;color: var(--accent);
-      text-transform:uppercase;letter-spacing:1px;
-    }
-    .card-body{padding:15px}
-
-    /* Inputs */
-    .input-row{display:flex;gap:10px;margin-bottom:12px}
-    .input-group{flex:1}
-    label{display:block;font-size:11px;color:var(--muted);margin-bottom:4px;font-weight:1000;text-transform:uppercase;letter-spacing:.8px}
-
-    /* Stats */
-    .stats-bar{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin:10px 0 18px}
-    .stat-box{
-      background: var(--card-2);
-      border:1px solid rgba(182,193,105,0.18);
-      padding:14px;border-radius: var(--radius);
-      box-shadow: 0 14px 40px rgba(0,0,0,.28);
-    }
-    .stat-label{font-size:11px;color:var(--muted);text-transform:uppercase;font-weight:1000;letter-spacing:.9px}
-    .stat-val{font-size:24px;font-weight:1200}
-    .pos{color:var(--accent)} /* brand accent for positive */
-    .neg{color:#ffb4b4}
-
-    /* Map */
-    #map{
-      height:520px;width:100%;
-      border-radius: var(--radius);
-      border:1px solid rgba(182,193,105,0.22);
-      z-index:0;
-    }
-
-    /* Table */
-    table{width:100%;border-collapse:collapse;font-size:13px}
-    th{
-      text-align:left;color:var(--muted);padding:10px;
-      border-bottom:1px solid rgba(182,193,105,0.18);
-      font-size:11px;text-transform:uppercase;font-weight:1100;letter-spacing:.9px
-    }
-    td{padding:10px;border-bottom:1px solid rgba(182,193,105,0.10)}
-    tr:hover td{background: rgba(182,193,105,0.05)}
-
-    .action-btn{
-      background: transparent;
-      border: 1px solid rgba(182,193,105,0.35);
-      color: var(--accent);
-      cursor:pointer;
-      padding:6px 10px;border-radius:12px;
-      font-size:11px;font-weight:1100;text-transform:uppercase;
-      transition:.15s;
-    }
-    .action-btn:hover{
-      background: rgba(182,193,105,0.18);
-      border-color: rgba(182,193,105,0.65);
-      transform: translateY(-1px);
-    }
-    .delete-btn{
-      color:#fecaca;border-color: rgba(239,68,68,0.55);
-    }
-    .delete-btn:hover{background: rgba(239,68,68,0.20); border-color: rgba(239,68,68,0.85)}
-
-    /* Buttons */
-    .btn{width:100%;padding:12px;border:none;border-radius:14px;font-weight:1100;cursor:pointer;margin-top:10px}
-    .btn-primary{
-      background: linear-gradient(135deg, rgba(182,193,105,0.98), rgba(210,217,138,0.86));
-      color:#071716;
-      box-shadow: 0 12px 26px rgba(182,193,105,0.18);
-    }
-    .btn-primary:hover{filter:brightness(1.03)}
-    .btn-tool{
-      background: rgba(26,76,72,0.20);
-      color: var(--text);
-      margin-top:5px;font-size:12px;padding:10px 12px;
-      border:1px solid rgba(26,76,72,0.45);
-      cursor:pointer;border-radius:14px;font-weight:1100;
-      transition:.15s;
-    }
-    .btn-tool:hover{background: rgba(26,76,72,0.30); border-color: rgba(182,193,105,0.40); transform: translateY(-1px)}
-
-    /* Modal */
-    #modal{
-      display:none;position:fixed;top:50%;left:50%;
-      transform:translate(-50%,-50%);
-      background: rgba(7,23,22,0.92);
-      border:1px solid rgba(182,193,105,0.55);
-      padding:18px;border-radius: var(--radius);
-      z-index:1000;width:92%;max-width:480px;
-      box-shadow: 0 25px 70px rgba(0,0,0,.70);
-      backdrop-filter: blur(10px);
-    }
-    #overlay{
-      display:none;position:fixed;top:0;left:0;width:100%;height:100%;
-      background:rgba(0,0,0,0.78);z-index:999
-    }
-    .breakdown-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(182,193,105,0.12);font-size:14px}
-
-    /* Sticky add (mobile) */
-    .sticky-add{
-      display:none;position:fixed;bottom:12px;left:12px;right:12px;z-index:998;
-      background: rgba(7,23,22,0.86);
-      border:1px solid rgba(182,193,105,0.22);
-      border-radius:18px;padding:10px;
-      box-shadow: 0 18px 50px rgba(0,0,0,.45);
-      backdrop-filter: blur(10px);
-    }
-    @media (max-width:1050px){.sticky-add{display:block} body{padding-bottom:120px}}
-
-    /* PRINT */
-    #printArea{display:none}
-    @media print{
-      nav,.no-print,.sticky-add,#status,.warn-banner{display:none!important}
-      body{background:#fff;color:#000}
-      .container{max-width:none}
-      #map{display:none!important}
-      #printArea{display:block}
-      #printArea *{color:#000!important}
-      #printArea h1,#printArea h2,#printArea h3{margin:0 0 8px 0}
-      #printArea .pCard{border:1px solid #ccc;border-radius:10px;padding:12px;margin:10px 0}
-      #printArea table{width:100%;border-collapse:collapse}
-      #printArea th,#printArea td{border-bottom:1px solid #ddd;padding:8px;font-size:11px}
-      #printArea .pGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
-      #printArea .pStat{border:1px solid #ddd;border-radius:10px;padding:10px}
-      #printArea .right{text-align:right}
-    }
-  </style>
+        @media print { 
+            nav, .btn, .no-print { display: none !important; } 
+            .container { width: 100%; max-width: none; }
+            .card { border: 1px solid #ccc; box-shadow: none; background: white; color: black; }
+            body { background: white; color: black; } 
+        }
+    </style>
 </head>
 <body>
 
 <div id="overlay" onclick="closeModal()"></div>
-<div id="modal" role="dialog" aria-modal="true" aria-label="Trip Financials">
-  <h3 style="margin-top:0;color:var(--accent)">Trip Financials</h3>
-  <div id="modal-content"></div>
-  <button class="btn btn-primary" onclick="closeModal()">Close</button>
+<div id="modal">
+    <h3 style="margin-top:0; color:var(--accent); text-transform: uppercase; letter-spacing: 1px;">Trip Breakdown</h3>
+    <div id="modal-content"></div>
+    <button class="btn btn-primary" onclick="closeModal()" style="margin-top:20px">Close</button>
 </div>
 
-<div id="printArea"></div>
-
 <div class="container">
-  <header class="topbar">
-    <div class="brandWrap">
-      <div class="logo">
-        <!-- Put your logo file at assets/tag-logo.png -->
-        <img src="assets/tag-logo.png" alt="Tag Trans Inc Logo">
-      </div>
-      <div class="brandText">
-        <div class="brandTitle">TAG <span>DRIVER</span> PRO</div>
-        <div class="brandSub">Tag Trans Inc • Dispatcher Command Center</div>
-      </div>
-    </div>
+    <header>
+        <div class="brand">TAG <span>DRIVER</span> PRO</div>
+        <div id="status">📡 PROCESSING...</div>
+    </header>
 
-    <div class="controls no-print">
-      <div class="control-block" style="min-width:240px;max-width:72vw;">
-        <div class="mini">Driver</div>
-        <select id="driverSelect" onchange="onDriverChange()"></select>
-      </div>
+    <nav class="no-print">
+        <button class="nav-btn active" onclick="showTab('dashboard', this)">COMMAND CENTER</button>
+        <button class="nav-btn" onclick="showTab('analytics', this)">ANALYTICS & COMPANY CUT</button>
+        <button class="nav-btn" onclick="showTab('settings', this)">SETTINGS</button>
+    </nav>
 
-      <button class="btnSmall primary" onclick="addDriver()">➕ Add Driver</button>
-      <button class="btnSmall danger" onclick="removeDriver()">🗑️ Remove Driver</button>
-
-      <div class="control-block" style="min-width:240px;max-width:72vw;">
-        <div class="mini">Week</div>
-        <select id="weekSelect" onchange="onWeekChange()"></select>
-      </div>
-
-      <button class="btnSmall primary" onclick="startNewWeek()">➕ Start New Week</button>
-      <button class="btnSmall danger" onclick="resetCurrentWeek()">🧹 Clear This Week</button>
-
-      <span class="pill">Local-only data</span>
-    </div>
-
-    <div id="status" class="status-msg">Processing...</div>
-  </header>
-
-  <div id="warn" class="warn-banner"></div>
-
-  <nav class="no-print">
-    <button class="nav-btn active" onclick="showTab('dashboard', this)">Dashboard & Map</button>
-    <button class="nav-btn" onclick="showTab('analytics', this)">Analytics</button>
-    <button class="nav-btn" onclick="showTab('companycut', this)">Company Cut</button>
-    <button class="nav-btn" onclick="showTab('settings', this)">Settings & Costs</button>
-  </nav>
-
-  <!-- The rest of your app content + JS stays the same.
-       IMPORTANT: Only change below in the JS:
-       - Polyline color from #38bdf8 to var(--accent) (gold)
-  -->
-
-  <!-- DASHBOARD -->
-  <div id="dashboard" class="tab-content active">
-    <div class="stats-bar">
-      <div class="stat-box"><div class="stat-label">Weekly Gross</div><div class="stat-val" id="wk_gross">$0.00</div></div>
-      <div class="stat-box"><div class="stat-label">Weekly Miles</div><div class="stat-val" id="wk_miles">0</div></div>
-      <div class="stat-box"><div class="stat-label">Net Profit</div><div class="stat-val pos" id="wk_profit">$0.00</div></div>
-      <div class="stat-box"><div class="stat-label">Avg RPM (Gross)</div><div class="stat-val" id="wk_rpm">$0.00</div></div>
-      <div class="stat-box"><div class="stat-label">Break-even RPM</div><div class="stat-val" id="wk_be_rpm">$0.00</div></div>
-    </div>
-
-    <div class="dash-grid">
-      <div>
-        <div class="card no-print">
-          <div class="card-header">New Trip Entry</div>
-          <div class="card-body">
-            <div class="input-row">
-              <div class="input-group"><label>Pickup</label><input id="origin" placeholder="City, State" autocomplete="off" /></div>
-              <div class="input-group"><label>Drop</label><input id="dest" placeholder="City, State" autocomplete="off" /></div>
-            </div>
-
-            <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap;">
-              <button class="btn-tool" onclick="calcRoute()">📡 Get Miles</button>
-              <button class="btn-tool" onclick="verifyMap()">🗺️ Verify</button>
-              <button class="btn-tool" onclick="checkTolls()">💰 Tolls</button>
-              <button class="btn-tool" onclick="swapCities()">🔁 Swap</button>
-            </div>
-
-            <div class="input-row">
-              <div class="input-group"><label>Loaded Mi</label><input id="mi_load" type="number" inputmode="numeric" min="0" step="1" oninput="preview()"></div>
-              <div class="input-group"><label>Deadhead</label><input id="mi_dh" type="number" inputmode="numeric" min="0" step="1" oninput="preview()"></div>
-              <div class="input-group"><label>Tolls ($)</label><input id="cost_tolls" type="number" inputmode="decimal" min="0" step="0.01" value="0" oninput="preview()"></div>
-            </div>
-            <div class="input-row">
-              <div class="input-group"><label>Gross Pay ($)</label><input id="pay_gross" type="number" inputmode="decimal" min="0" step="0.01" oninput="preview()"></div>
-            </div>
-
-            <div style="background:rgba(0,0,0,0.28);padding:12px;border-radius:16px;margin-bottom:10px;text-align:center;border:1px solid rgba(182,193,105,0.18);">
-              <span style="font-size:11px;color:var(--muted);text-transform:uppercase;font-weight:1000;">Trip Net Preview</span>
-              <div id="preview_net" style="font-size:22px;font-weight:1200;color:var(--text);margin-top:4px;">$0.00</div>
-              <div id="preview_hint" class="mini" style="margin-top:6px;"></div>
-            </div>
-
-            <button class="btn btn-primary" onclick="addLoad()">Add Load to Week</button>
-            <div class="mini" style="margin-top:10px;">Driver split % can be overridden in Settings.</div>
-          </div>
+    <div id="dashboard" class="tab-content active">
+        <div class="stats-bar">
+            <div class="stat-box"><div class="stat-label">Weekly Gross</div><div class="stat-val" id="wk_gross">$0.00</div></div>
+            <div class="stat-box"><div class="stat-label">Weekly Miles</div><div class="stat-val" id="wk_miles">0</div></div>
+            <div class="stat-box"><div class="stat-label">Net Profit</div><div class="stat-val pos" id="wk_profit">$0.00</div></div>
+            <div class="stat-box"><div class="stat-label">Avg RPM</div><div class="stat-val" id="wk_rpm">$0.00</div></div>
         </div>
 
-        <div class="card no-print">
-          <div class="card-header">Quick Actions</div>
-          <div class="card-body" style="display:flex;gap:10px;flex-wrap:wrap;">
-            <button class="btnSmall" onclick="copySummary()">📋 Copy Weekly Summary</button>
-            <button class="btnSmall" onclick="exportCSV('week')">⬇️ Export Week CSV</button>
-            <button class="btnSmall" onclick="printWeeklySummary()">🖨️ Print Weekly Summary</button>
-          </div>
-        </div>
-      </div>
+        <div class="dash-grid">
+            <div>
+                <div class="card no-print">
+                    <div class="card-header">Trip Planner</div>
+                    <div class="card-body">
+                        <div class="input-row">
+                            <div class="input-group">
+                                <label>Pickup City</label><input id="origin" placeholder="City, State" autocomplete="off">
+                                <div id="orig-ok" class="verified"></div>
+                            </div>
+                            <div class="input-group">
+                                <label>Drop City</label><input id="dest" placeholder="City, State" autocomplete="off">
+                                <div id="dest-ok" class="verified"></div>
+                            </div>
+                        </div>
+                        <div style="display:flex; gap:10px; margin-bottom:20px;">
+                            <button class="btn-tool" onclick="calcRoute()">📡 Get Miles</button>
+                            <button class="btn-tool" onclick="verifyMap()">🗺️ Verify</button>
+                            <button class="btn-tool" onclick="checkTolls()">💰 Tolls</button>
+                        </div>
+                        <div class="input-row">
+                            <div class="input-group"><label>Loaded Mi</label><input id="mi_load" type="number" oninput="preview()"></div>
+                            <div class="input-group"><label>Deadhead</label><input id="mi_dh" type="number" oninput="preview()"></div>
+                            <div class="input-group"><label>Tolls ($)</label><input id="cost_tolls" type="number" value="0" oninput="preview()"></div>
+                        </div>
+                        <div class="input-row">
+                            <div class="input-group"><label>Gross Pay ($)</label><input id="pay_gross" type="number" oninput="preview()"></div>
+                        </div>
+                        
+                        <div style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 12px; margin-bottom: 15px; border: 1px solid var(--border); text-align: center;">
+                            <span style="font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px;">Estimated Net Profit</span>
+                            <div id="preview_net" style="font-size: 24px; font-weight: 800; color: var(--text); margin-top: 5px;">$0.00</div>
+                        </div>
 
-      <div>
+                        <button class="btn btn-primary" onclick="addLoad()">Book This Load</button>
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <div class="card">
+                    <div class="card-header">Active Route Map</div>
+                    <div class="card-body" style="padding:0;">
+                        <div id="map"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="card">
-          <div class="card-header">Weekly Route Map</div>
-          <div class="card-body" style="padding:0;">
-            <div id="map"></div>
-          </div>
+            <div class="card-header">Weekly Load Log</div>
+            <div style="overflow-x:auto;">
+                <table>
+                    <thead><tr><th>Route</th><th>Miles</th><th>Gross</th><th>Net</th><th>Actions</th></tr></thead>
+                    <tbody id="loadList"></tbody>
+                </table>
+            </div>
+            <div class="card-body no-print">
+                <button class="btn-tool" style="width:auto" onclick="window.print()">Print Weekly Report</button>
+            </div>
         </div>
-      </div>
     </div>
 
-    <div class="card">
-      <div class="card-header">Weekly Load Log</div>
-      <div style="overflow-x:auto;">
-        <table>
-          <thead><tr><th>Route</th><th>Miles</th><th>Gross</th><th>Net</th><th>Gross RPM</th><th>Actions</th></tr></thead>
-          <tbody id="loadList"></tbody>
-        </table>
-      </div>
+    <div id="analytics" class="tab-content">
+        <div class="stats-bar">
+            <div class="stat-box"><div class="stat-label">YTD Gross</div><div class="stat-val" id="ytd_gross">$0.00</div></div>
+            <div class="stat-box"><div class="stat-label">YTD Net Profit</div><div class="stat-val pos" id="ytd_profit">$0.00</div></div>
+            <div class="stat-box"><div class="stat-label">Company Cut (YTD)</div><div class="stat-val" id="ytd_cut" style="color: var(--accent);">$0.00</div></div>
+        </div>
+        
+        <div class="dash-grid">
+            <div class="card">
+                <div class="card-header">Driver Health</div>
+                <div class="card-body">
+                    <div class="breakdown-row"><span>Operating Expense Ratio:</span><span id="oer_val">0%</span></div>
+                    <div class="breakdown-row"><span>Fuel Spent (YTD):</span><span id="ytd_fuel" class="neg">$0.00</span></div>
+                    <div class="breakdown-row"><span>Maintenance Saved:</span><span id="ytd_maint" class="pos">$0.00</span></div>
+                    <div class="breakdown-row"><span>Est. Taxes (25%):</span><span id="ytd_tax" class="neg">$0.00</span></div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-header">Company Performance</div>
+                <div class="card-body">
+                    <div class="breakdown-row"><span>Total Company Revenue:</span><span id="comp_rev" style="color:var(--accent); font-weight:700;">$0.00</span></div>
+                    <div style="margin-top: 15px; font-size: 11px; color: var(--muted); line-height: 1.5;">
+                        This represents the portion of Gross Revenue kept by the company (Gross - Driver Split).
+                    </div>
+                </div>
+            </div>
+        </div>
+        <button class="btn btn-primary" style="background:var(--danger); width:auto;" onclick="if(confirm('Delete all history?')){localStorage.clear();location.reload();}">Factory Reset Data</button>
     </div>
-  </div>
 
-  <!-- Keep your Analytics / Company Cut / Settings sections + JS below exactly as you had it -->
-  <!-- Paste the rest of your existing HTML + JS here -->
-
+    <div id="settings" class="tab-content">
+        <div class="dash-grid">
+            <div class="card">
+                <div class="card-header">Fixed Weekly Costs</div>
+                <div class="card-body">
+                    <div class="input-row"><div class="input-group"><label>Truck Pmt</label><input id="f_truck" type="number" value="800"></div></div>
+                    <div class="input-row"><div class="input-group"><label>Trailer Pmt</label><input id="f_trailer" type="number" value="400"></div></div>
+                    <div class="input-row"><div class="input-group"><label>Insurance</label><input id="f_ins" type="number" value="350"></div></div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-header">Variable Weekly Deductions</div>
+                <div class="card-body">
+                    <div class="input-row"><div class="input-group"><label>Advances</label><input id="f_adv" type="number" value="0"></div></div>
+                    <div class="input-row"><div class="input-group"><label>Food/Personal</label><input id="f_food" type="number" value="0"></div></div>
+                    <div class="input-row"><div class="input-group"><label>Repairs</label><input id="f_rep" type="number" value="0"></div></div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-header">Specs & Rates</div>
+                <div class="card-body">
+                    <div class="input-row"><div class="input-group"><label>Driver Split % (e.g. 0.80)</label><input id="s_split" type="number" value="0.80" step="0.01"></div></div>
+                    <div class="input-row"><div class="input-group"><label>Fuel Price</label><input id="s_fuel" type="number" value="3.25" step="0.01"></div></div>
+                    <div class="input-row"><div class="input-group"><label>MPG</label><input id="s_mpg" type="number" value="6.5" step="0.1"></div></div>
+                    <div class="input-row"><div class="input-group"><label>Maint ($/mi)</label><input id="s_maint" type="number" value="0.17" step="0.01"></div></div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script>
-/* ✅ IMPORTANT:
-   Keep your existing JavaScript.
-   Only make this small change in initMap():
-   Change polyline color to the Tag gold.
+    // --- STATE MANAGEMENT ---
+    let loads = JSON.parse(localStorage.getItem('tag_v16_data') || '[]');
+    let lastDropCoords = JSON.parse(localStorage.getItem('tag_v16_last') || 'null'); // {lat, lon}
+    let map = null;
 
-   Example replacements:
-   - color: '#38bdf8'  ->  color: getComputedStyle(document.documentElement).getPropertyValue('--accent').trim()
-*/
+    // --- NAVIGATION ---
+    function showTab(id, btn) {
+        document.querySelectorAll('.tab-content').forEach(d => d.classList.remove('active'));
+        document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+        btn.classList.add('active');
+        if(id === 'dashboard') setTimeout(initMap, 200); 
+    }
 
+    // --- MAP ENGINE ---
+    function initMap() {
+        if(!map) {
+            map = L.map('map').setView([39.82, -98.58], 4);
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { attribution: '© OpenStreetMap' }).addTo(map);
+        }
+        
+        map.eachLayer(layer => { if(!!layer.toGeoJSON) map.removeLayer(layer); });
+
+        const points = [];
+        // Tag Gold Color
+        const goldColor = '#B6C169'; 
+
+        loads.forEach((l, i) => {
+            if(l.coords && l.coords.start) {
+                L.marker([l.coords.start.lat, l.coords.start.lon]).addTo(map).bindPopup(`<b>Load ${i+1} Pickup</b><br>${l.origin}`);
+                L.marker([l.coords.end.lat, l.coords.end.lon]).addTo(map).bindPopup(`<b>Load ${i+1} Drop</b><br>${l.dest}`);
+                points.push([l.coords.start.lat, l.coords.start.lon]);
+                points.push([l.coords.end.lat, l.coords.end.lon]);
+                
+                L.polyline([[l.coords.start.lat, l.coords.start.lon], [l.coords.end.lat, l.coords.end.lon]], {color: goldColor, weight: 3}).addTo(map);
+            }
+        });
+
+        if(points.length > 0) map.fitBounds(points, {padding: [50,50]});
+        map.invalidateSize();
+    }
+
+    // --- ROUTING API ---
+    async function getLoc(city) {
+        try {
+            const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(city)}, USA&limit=1`);
+            const data = await res.json();
+            return data[0];
+        } catch(e) { return null; }
+    }
+
+    async function calcRoute() {
+        const o = document.getElementById('origin').value;
+        const d = document.getElementById('dest').value;
+        const stat = document.getElementById('status');
+        
+        if(!o || !d) return alert("Enter cities first");
+        
+        stat.style.display = 'block'; stat.innerText = "Finding Cities...";
+        const locA = await getLoc(o);
+        const locB = await getLoc(d);
+
+        if(!locA || !locB) { stat.innerText = "City Not Found (Check Spelling)"; return; }
+
+        // Verification Badges
+        document.getElementById('orig-ok').innerText = "✓ " + locA.display_name.split(',')[0];
+        document.getElementById('orig-ok').style.display='block';
+        document.getElementById('dest-ok').innerText = "✓ " + locB.display_name.split(',')[0];
+        document.getElementById('dest-ok').style.display='block';
+
+        // 1. Calculate Loaded Miles
+        stat.innerText = "Routing...";
+        const rRes = await fetch(`https://router.project-osrm.org/route/v1/driving/${locA.lon},${locA.lat};${locB.lon},${locB.lat}?overview=false`);
+        const rData = await rRes.json();
+        const miles = Math.round(rData.routes[0].distance * 0.000621371);
+        document.getElementById('mi_load').value = miles;
+        
+        // 2. Calculate Deadhead from Last Drop (Memory)
+        if(lastDropCoords) {
+             stat.innerText = "Calculating Deadhead...";
+             const dhRes = await fetch(`https://router.project-osrm.org/route/v1/driving/${lastDropCoords.lon},${lastDropCoords.lat};${locA.lon},${locA.lat}?overview=false`);
+             const dhData = await dhRes.json();
+             document.getElementById('mi_dh').value = Math.round(dhData.routes[0].distance * 0.000621371);
+        } else {
+             document.getElementById('mi_dh').value = 0;
+        }
+
+        // Save coordinates temporarily for booking
+        document.getElementById('origin').dataset.lat = locA.lat;
+        document.getElementById('origin').dataset.lon = locA.lon;
+        document.getElementById('dest').dataset.lat = locB.lat;
+        document.getElementById('dest').dataset.lon = locB.lon;
+
+        stat.style.display = 'none';
+        preview();
+    }
+
+    // --- FINANCIAL CALCULATIONS ---
+    function getSpecs() {
+        return {
+            split: parseFloat(document.getElementById('s_split').value) || 0.8,
+            fuel: parseFloat(document.getElementById('s_fuel').value) || 3.25,
+            mpg: parseFloat(document.getElementById('s_mpg').value) || 6.5,
+            maint: parseFloat(document.getElementById('s_maint').value) || 0.17,
+            fixed: ['f_truck','f_trailer','f_ins','f_adv','f_food','f_rep'].reduce((s,id)=>s+(parseFloat(document.getElementById(id).value)||0),0)
+        };
+    }
+
+    function preview() {
+        const s = getSpecs();
+        const gross = parseFloat(document.getElementById('pay_gross').value) || 0;
+        const miles = (parseFloat(document.getElementById('mi_load').value)||0) + (parseFloat(document.getElementById('mi_dh').value)||0);
+        const tolls = parseFloat(document.getElementById('cost_tolls').value) || 0;
+
+        const fuel = (miles/s.mpg)*s.fuel;
+        const maint = miles*s.maint;
+        const fixed = s.fixed/5; // Daily fixed cost logic
+        const net = (gross*s.split) - fuel - maint - fixed - tolls;
+
+        const el = document.getElementById('preview_net');
+        el.innerText = money(net);
+        el.style.color = net>=0 ? 'var(--success)' : 'var(--danger)';
+    }
+
+    function addLoad() {
+        const gross = parseFloat(document.getElementById('pay_gross').value) || 0;
+        const miles = (parseFloat(document.getElementById('mi_load').value)||0) + (parseFloat(document.getElementById('mi_dh').value)||0);
+        const tolls = parseFloat(document.getElementById('cost_tolls').value) || 0;
+        
+        // Coords
+        const oLat = document.getElementById('origin').dataset.lat;
+        const oLon = document.getElementById('origin').dataset.lon;
+        const dLat = document.getElementById('dest').dataset.lat;
+        const dLon = document.getElementById('dest').dataset.lon;
+
+        if(!gross) return alert("Enter Gross Pay");
+
+        const s = getSpecs();
+        const fuel = (miles/s.mpg)*s.fuel;
+        const maint = miles*s.maint;
+        const fixed = s.fixed/5;
+        const net = (gross*s.split) - fuel - maint - fixed - tolls;
+        const companyCut = gross * (1 - s.split);
+
+        loads.push({
+            origin: document.getElementById('origin').value,
+            dest: document.getElementById('dest').value,
+            gross, miles, net,
+            details: { fuel, maint, fixed, tolls, cut: gross*s.split, comp: companyCut },
+            coords: (oLat && dLat) ? { start:{lat:oLat, lon:oLon}, end:{lat:dLat, lon:dLon} } : null
+        });
+
+        // Update Last Drop Memory
+        if(dLat && dLon) {
+            lastDropCoords = { lat: dLat, lon: dLon };
+            localStorage.setItem('tag_v16_last', JSON.stringify(lastDropCoords));
+        }
+
+        localStorage.setItem('tag_v16_data', JSON.stringify(loads));
+        updateUI();
+        initMap(); 
+        
+        // Clear Form
+        ['origin','dest','mi_load','mi_dh','cost_tolls','pay_gross'].forEach(i => document.getElementById(i).value="");
+        document.getElementById('preview_net').innerText = "$0.00";
+        document.querySelectorAll('.verified').forEach(d=>d.style.display='none');
+    }
+
+    function updateUI() {
+        const tGross = loads.reduce((s,l) => s+l.gross, 0);
+        const tMiles = loads.reduce((s,l) => s+l.miles, 0);
+        const tNet = loads.reduce((s,l) => s+l.net, 0);
+        
+        // Weekly Dashboard
+        document.getElementById('wk_gross').innerText = money(tGross);
+        document.getElementById('wk_miles').innerText = tMiles.toLocaleString();
+        document.getElementById('wk_profit').innerText = money(tNet);
+        document.getElementById('wk_rpm').innerText = money(tMiles>0 ? tGross/tMiles : 0);
+
+        // Analytics Tab
+        document.getElementById('ytd_gross').innerText = money(tGross);
+        document.getElementById('ytd_profit').innerText = money(tNet);
+        document.getElementById('ytd_tax').innerText = money(tNet * 0.25);
+        document.getElementById('oer_val').innerText = tGross>0 ? Math.round(((tGross-tNet)/tGross)*100)+'%' : '0%';
+        
+        const totalFuel = loads.reduce((s,l)=>s+l.details.fuel, 0);
+        const totalMaint = loads.reduce((s,l)=>s+l.details.maint, 0);
+        const totalComp = loads.reduce((s,l)=>s+l.details.comp, 0);
+        
+        document.getElementById('ytd_fuel').innerText = money(totalFuel);
+        document.getElementById('ytd_maint').innerText = money(totalMaint);
+        document.getElementById('ytd_cut').innerText = money(totalComp);
+        document.getElementById('comp_rev').innerText = money(totalComp);
+
+        // Render List
+        document.getElementById('loadList').innerHTML = loads.map((l,i) => `
+            <tr>
+                <td style="font-weight:700">${l.origin} <span style="color:var(--accent)">➜</span> ${l.dest}</td>
+                <td>${l.miles}</td>
+                <td>${money(l.gross)}</td>
+                <td class="${l.net>=0?'pos':'neg'}">${money(l.net)}</td>
+                <td>
+                    <button class="action-btn" onclick="viewDetail(${i})">Detail</button>
+                    <button class="action-btn delete-btn" onclick="del(${i})">X</button>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    function viewDetail(i) {
+        const l = loads[i];
+        document.getElementById('modal-content').innerHTML = `
+            <div class="breakdown-row"><span>Load Gross:</span><span>${money(l.gross)}</span></div>
+            <div class="breakdown-row"><span>Driver Cut:</span><span class="pos">${money(l.details.cut)}</span></div>
+            <div class="breakdown-row"><span>Company Cut:</span><span>${money(l.details.comp)}</span></div>
+            <div class="breakdown-row"><span>Fuel Cost:</span><span class="neg">-${money(l.details.fuel)}</span></div>
+            <div class="breakdown-row"><span>Fixed Cost Share:</span><span class="neg">-${money(l.details.fixed)}</span></div>
+            <div class="breakdown-row"><span>Maint Savings:</span><span class="neg">-${money(l.details.maint)}</span></div>
+            <div class="breakdown-row"><span>Tolls:</span><span class="neg">-${money(l.details.tolls)}</span></div>
+            <div class="breakdown-row" style="font-weight:900; font-size:18px; border-top:1px solid var(--accent); margin-top:10px;">
+                <span>NET PROFIT:</span><span class="${l.net>=0?'pos':'neg'}">${money(l.net)}</span>
+            </div>
+        `;
+        document.getElementById('modal').style.display='block';
+        document.getElementById('overlay').style.display='block';
+    }
+
+    function closeModal() { document.getElementById('modal').style.display='none'; document.getElementById('overlay').style.display='none'; }
+    function del(i) { 
+        loads.splice(i,1); 
+        localStorage.setItem('tag_v16_data', JSON.stringify(loads)); 
+        if(loads.length===0) localStorage.removeItem('tag_v16_last');
+        updateUI(); initMap(); 
+    }
+    function money(v) { return '$' + Number(v).toLocaleString(undefined, {minimumFractionDigits:2}); }
+    
+    // Tools
+    function verifyMap() {
+        const o=document.getElementById('origin').value; const d=document.getElementById('dest').value;
+        if(o&&d) window.open(`https://www.google.com/maps/dir/${encodeURIComponent(o)}/${encodeURIComponent(d)}`);
+    }
+    function checkTolls() {
+        const o=document.getElementById('origin').value; const d=document.getElementById('dest').value;
+        if(o&&d) { navigator.clipboard.writeText(o+" to "+d); alert("Copied. Paste into TollGuru."); window.open('https://tollguru.com/toll-calculator'); }
+    }
+
+    // Initialize
+    updateUI();
+    setTimeout(initMap, 500); 
 </script>
 </body>
 </html>
